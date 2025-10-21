@@ -14,18 +14,24 @@ Modern React SPA implementing the Ocean Professional theme with audit-ready UX f
 - Jest + React Testing Library tests with API calls mocked
 
 ## Getting Started
-1. Copy .env.example to .env and set environment variables:
-   - REACT_APP_API_BASE_URL
-   - REACT_APP_AUDIT_API_BASE_URL (optional)
-   - REACT_APP_SITE_URL
+1. Environment
+   - Copy .env.example to .env (or use the pre-populated .env in this repo) and set:
+     - REACT_APP_API_BASE_URL (default: http://localhost:4000)
+     - REACT_APP_AUDIT_API_BASE_URL (default: http://localhost:4000)
+     - REACT_APP_SITE_URL (default: http://localhost:3000)
 
 2. Install and run:
    - npm install
    - npm start
+   - The app will be available at http://localhost:3000
 
 3. Testing:
-   - npm test
+   - CI=true npm test
    - Coverage target: >= 80% (set CI threshold as needed)
+
+4. Backend Integration:
+   - Ensure the backend is running on http://localhost:4000 (npm run dev in backend/)
+   - CORS_ORIGIN in backend .env must include http://localhost:3000
 
 ## GxP & ALCOA+ Notes
 - Attributable: apiClient attaches x-user-id, x-action, x-timestamp headers; auditClient emits events with userId/action/timestamp.

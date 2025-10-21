@@ -91,11 +91,32 @@ High-level context:
   - useAuditMetadata(): provides userId, timestamp, action
 
 ## Interfaces (REST)
-- GET/POST /api/recommendations
-  - Request: ingredients [string], preferences [array|string], allergens [array|string], cuisine [string], mealType [string], page [number], size [number], sort [string], metadata { userId, action, timestamp }
-  - Response: { items: [ { id, title, image, prepTime, tags } ], page, size, total }
-- GET /api/recipes/:id
-  - Response: { id, title, image, ingredients: [ ... ], steps: [ ... ], nutrition: { ... }, tags: [ ... ] }
+Backend base: http://localhost:4000
+
+Implemented endpoints (per backend/openapi.yaml):
+- POST /auth/login
+  - body: { email, password }
+  - 200: { token, user { id, email, roles[], name } }
+- GET /users/me (auth)
+  - 200: { id, email, name, roles[] }
+- GET /recipes/search
+  - query: q, cuisine, dietary, maxTime, page=1, pageSize=10
+  - 200: { items: Recipe[], total, page, pageSize }
+- GET /recipes/{id}
+  - 200: Recipe
+- POST /recipes/{id}/save (auth, e-sign when enabled)
+  - body: { passwordReentry?, reason? }
+  - 200: { saved: boolean, esign?: string }
+- GET /users/me/saved (auth)
+  - 200: { items: Recipe[] }
+- POST /audit/log (auth)
+  - body: { action, entity, entityId?, beforeState?, afterState?, reason? }
+  - 201: Logged
+
+Frontend consumes the API using:
+- REACT_APP_API_BASE_URL=http://localhost:4000
+- REACT_APP_AUDIT_API_BASE_URL=http://localhost:4000
+- CORS_ORIGIN on backend must include http://localhost:3000
 
 ## Actionable Next Steps
 - Implement routing and component scaffolds.

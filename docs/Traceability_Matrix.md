@@ -1,37 +1,39 @@
 # Traceability Matrix — Recipe Recommender Frontend (React)
 
-## Requirement IDs to Implementation (Planned)
-| Requirement ID | Description | Planned Implementation (Files/Components) |
+## Requirement IDs to Implementation (Actual)
+| Requirement ID | Description | Implementation (Files/Components) |
 |---|---|---|
-| REQ-FUNC-001 | Submit preferences and fetch recommendations | src/components/SearchForm.jsx, hooks/useRecommendations.js |
-| REQ-FUNC-002 | Display recommendations with pagination and sorting | src/components/RecommendationsList.jsx, src/components/RecipeCard.jsx |
-| REQ-FUNC-003 | View recipe details | src/components/RecipeDetail.jsx, hooks/useRecipeDetail.js |
-| REQ-NFR-001 | Ocean Professional theme and responsive layout | src/styles/theme.css, existing App.css variables, layout components |
-| REQ-NFR-002 | Accessibility (WCAG 2.1 AA intent) | ARIA roles/labels in components, tests with axe |
-| REQ-SEC-001 | Least privilege API calls over HTTPS | hooks/apiClient.js, request builder |
-| REQ-COMP-001 | Audit attribution metadata on API calls | hooks/useAuditMetadata.js, apiClient middleware |
-| REQ-VAL-001 | Client-side validation and error handling | utils/validators.js, shared ErrorBanner |
+| REQ-FUNC-001 | Search recipes | frontend: src/components/Recipes/RecipeSearchForm.jsx, RecipeList.jsx; backend: GET /recipes/search |
+| REQ-FUNC-002 | View recipe detail | frontend: src/components/Recipes/RecipeDetail.jsx; backend: GET /recipes/{id} |
+| REQ-FUNC-003 | Save recipe (with e-sign when enabled) | frontend: uses apiClient.post('/recipes/:id/save'); backend: POST /recipes/{id}/save with REQUIRE_ESIGN_FOR_SAVE |
+| REQ-SEC-001 | Auth & RBAC | backend: JWT + RBAC middleware; frontend: AuthContext |
+| REQ-COMP-001 | Audit trail | backend: audit middleware + /audit/log; frontend: auditClient emits |
+| REQ-VAL-001 | Input validation | backend: Zod validators; frontend: form validations |
+| REQ-NFR-001 | Ocean Professional theme | frontend: App.css, layout components |
+| REQ-NFR-002 | Accessibility hints | frontend: components include ARIA labels |
 
-Note: Current repo contains a minimal template (App.js, App.css). The components and hooks listed are planned scaffolds to be created in subsequent tasks.
-
-## Requirement IDs to Tests (Planned)
+## Requirement IDs to Tests (Actual)
 | Requirement ID | Unit Tests | Integration Tests |
 |---|---|---|
-| REQ-FUNC-001 | SearchForm validation and submit | Search + Results flow with mocked API |
-| REQ-FUNC-002 | RecommendationsList rendering, pagination controls | List + pagination + sort end-to-end |
-| REQ-FUNC-003 | useRecipeDetail and RecipeDetail rendering | Route navigation to detail and render |
-| REQ-NFR-001 | Theme variable application smoke tests | Visual regression (optional) |
-| REQ-NFR-002 | Accessibility props presence | Axe checks on main screens |
-| REQ-SEC-001 | API request builder excludes sensitive data | Integration of apiClient with headers |
-| REQ-COMP-001 | Audit metadata builder unit tests | Verify headers/body metadata in requests |
-| REQ-VAL-001 | Validators for inputs and pagination bounds | Error banners appear on failures |
+| REQ-FUNC-001 | frontend: src/__tests__/RecipeSearchForm.test.jsx | backend: tests/integration/recipes.int.test.ts (search) |
+| REQ-FUNC-002 | frontend: src/__tests__/RecipeList.test.jsx | backend: tests/integration/recipes.int.test.ts (detail) |
+| REQ-FUNC-003 | — | backend: tests/integration/recipes.int.test.ts (save) |
+| REQ-SEC-001 | backend: tests/unit/authService.test.ts | backend: tests/integration/auth.int.test.ts |
+| REQ-COMP-001 | — | backend: integration tests verify audit entries |
+| REQ-VAL-001 | backend: tests/unit/validation.test.ts | covered in integration tests |
 
-## Coverage Gaps and Actions
-- Gaps
-  - Components and hooks not yet implemented (SearchForm, RecommendationsList, RecipeDetail, apiClient, validators).
-  - No routing scaffolding in current codebase.
-- Actions
-  - Implement planned components and hooks with Ocean Professional styling.
-  - Add routing with react-router-dom and associated tests.
-  - Introduce apiClient with audit metadata injection (userId, action, timestamp).
-  - Build validators and error handling patterns; add unit/integration tests.
+## Config and Endpoints
+- Frontend env:
+  - REACT_APP_API_BASE_URL=http://localhost:4000
+  - REACT_APP_AUDIT_API_BASE_URL=http://localhost:4000
+- Backend env:
+  - CORS_ORIGIN=http://localhost:3000
+  - DATABASE_URL=postgres://postgres:postgres@localhost:5432/recipes
+- Endpoints in use:
+  - POST /auth/login
+  - GET /users/me
+  - GET /recipes/search
+  - GET /recipes/{id}
+  - POST /recipes/{id}/save
+  - GET /users/me/saved
+  - POST /audit/log
