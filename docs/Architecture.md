@@ -1,125 +1,123 @@
-# Software Architecture Document (SAD) — Recipe Recommender Frontend (React)
+# Recipe Recommender Web App - Architecture Document
 
-## System Context
-The frontend is a React SPA that interacts with a backend via REST APIs to retrieve recipe recommendations and details. The frontend does not store sensitive user data and relies on the backend for business logic, persistence, and audit trail recording. Dependencies include:
-- Backend REST API: Recommendation search and recipe detail endpoints
-- food_recipe_database: Indirect dependency through backend
+## System Overview
+This React SPA provides a responsive frontend for users to search and view recipes. It integrates with a backend via REST and adheres to GxP ALCOA+ principles by attaching attribution metadata in requests. The frontend avoids durable storage of sensitive data and relies on the backend for authentication, authorization, persistence, and audit trail storage.
 
-High-level context:
-- Browser (User) → React Frontend → REST API (Backend) → Recipe Database
+## Context and Container Diagram (C4 Level 1/2 description)
+- Context: User (Browser) → Recipe Recommender Frontend (React SPA) → Backend REST API → Recipe Database.
+- Containers:
+  - Frontend (this repo): React with component/state architecture, services for API/audit.
+  - Backend (external): Provides recommendation, recipes, audit endpoints.
+  - Data store (external): Recipes database managed by backend.
 
-## Constraints and Assumptions
-- React 18 environment using create-react-app (present in repo).
-- Minimal dependencies; theming via CSS variables and Ocean Professional styling.
-- Authentication and authorization are assumed to be provided by the hosting/back-end context; UI reads user context if available to attach attribution metadata.
-- Network calls performed over HTTPS; no external credentials included in the frontend repo.
+```mermaid
+flowchart LR
+  user["User (Browser)"] --> fe["Frontend SPA (React)"]
+  fe --> api["Backend REST API"]
+  api --> db["Recipe Database"]
+```
 
-## UI Architecture
-- Application Shell
-  - Top navigation bar: quick actions (theme toggle as present, later: filters access)
-  - Sidebar: navigation (Home/Search, Favorites [future], Settings)
-  - Main area: lists and details
-- Routing (planned)
-  - /: Search and Recommendations
-  - /recipe/:id: Recipe Detail
-- State Management
-  - React hooks and component-level state for inputs and UI.
-  - Lightweight custom hooks for API calls, caching, and debounced search.
-- Theming (Ocean Professional)
-  - CSS variables for colors: primary #2563EB, secondary #F59E0B, background #f9fafb, surface #ffffff, text #111827
-  - Subtle shadows and rounded corners; smooth transitions.
+## Frontend Architecture (React)
+### State Management, Routing, Components, Services
+- State: Component-level state with hooks; contexts for Auth and Theme.
+- Routing: Routes defined in src/routes.jsx covering "/", "/recipes", "/recipe/:id", and a protected "/saved".
+- Components:
+  - Layout: Topbar.jsx, Sidebar.jsx
+  - Recipes: RecipeSearchForm.jsx, RecipeList.jsx, RecipeDetail.jsx
+  - Common: Loading.jsx, ErrorBanner.jsx
+- Services:
+  - apiClient.js: Fetch wrapper, base URL from REACT_APP_API_BASE_URL, attaches Authorization and x-user-id/x-action/x-timestamp when provided, with normalized error handling.
+  - auditClient.js: Emits audit events to REACT_APP_AUDIT_API_BASE_URL/audit (non-blocking).
+  - internalAuthSnapshot.js: Provides token snapshot to services.
+- Contexts:
+  - AuthContext.jsx: Manages user and token, provides role-aware UI decisions.
+  - ThemeContext.jsx: Persists and applies light/dark theme via data-theme and CSS tokens.
 
-## Data Flow
-### Inputs and Preferences
-- User enters ingredients, dietary preferences, allergens, cuisine, and meal type.
-- Client-side validation ensures correct types, allowed values, and non-malicious input.
+## API Integration Patterns and DTOs
+- Recommendation request (POST /recommendations):
+  - Request DTO:
+    ```json
+    {
+      "ingredients": "string",
+      "preferences": ["string"],
+      "cuisine": "string|null",
+      "maxTime": 0,
+      "page": 0,
+      "size": 10,
+      "sort": "relevance|prepTime|title",
+      "metadata": { "userId": "string", "action": "READ", "timestamp": "ISO-8601" }
+    }
+    ```
+  - Response DTO:
+    ```json
+    { "items": [{ "id": "string", "title": "string", "prepTime": 0 }], "page": 0, "size": 10, "total": 0 }
+    ```
+- Recipe detail (GET /recipes/{id}):
+  - Response DTO contains id, title, ingredients[], steps[], optional nutrition{}.
 
-### API Calls
-- Recommendations: POST/GET /api/recommendations with payload { ingredients, preferences, allergens, cuisine, mealType, pagination, sort }.
-- Recipe Detail: GET /api/recipes/:id.
+## Security Architecture (RBAC, auth context placeholders)
+- RBAC awareness in UI via AuthContext; conditional navigation and pages (e.g., /saved).
+- Backend is source of truth for authorization; frontend avoids exposing privileged operations without backend checks.
+- Tokens are read through an internal snapshot to avoid hook dependencies in services; in production use secure cookies/SSO.
 
-### Caching and Pagination
-- Cache last N query results in memory (hook state) keyed by parameters.
-- Support pagination params (page, size) and sorting (e.g., relevance, prepTime).
+## Audit and Logging Strategy (frontend events, traceability hooks)
+- Each API call can include attribution headers; apiClient test verifies headers.
+- auditClient emits events such as search_submit and recipe_view; failures are swallowed to avoid user disruption.
+- Timestamps are generated contemporaneously using new Date().toISOString().
 
-### Event Attribution
-- For each API call, include metadata if available:
-  - x-user-id: user identifier from auth context
-  - x-action: READ for fetches; CREATE/UPDATE reserved for future critical ops
-  - x-timestamp: ISO 8601 timestamp
-- If headers are not supported, include in request body metadata field for audit by backend.
+## Validation Strategy (client-side, cross-field, business rules)
+- Client-side validation in RecipeSearchForm.jsx:
+  - Required ingredients with max length.
+  - Whitelisted dietary and cuisine selects.
+  - Max time numeric, positive, ≤ 600.
+- RecipeList.jsx and RecipeDetail.jsx handle empty/nullable API fields defensively.
 
-## Security and Access Control
-- Role-based checks at UI level (conditional visibility) where applicable; definitive checks to be enforced by backend.
-- Avoid storing tokens in localStorage; rely on secure cookies/session where applicable.
-- Enforce least privilege on API usage (limited scopes).
+## Error Handling and Resilience Patterns
+- ErrorBanner provides friendly messages and optional retry.
+- apiClient normalizes error messages and throws with status.
+- Non-blocking audit emissions; empty state rendering on no results.
 
-## Error Handling Strategy
-- Centralized error boundary for catastrophic render errors.
-- API hook with try/catch and standard error object normalization.
-- User-facing banners/toasts for errors with retry actions for transient failures.
-- Graceful empty states when no results are found.
+## Performance and Caching Strategy
+- Debounced user input can be applied (pattern ready).
+- Pagination and sorting minimize render load.
+- Simple in-memory caching via component state; CRA build optimizations for static assets.
 
-## Audit Trail Strategy
-- Frontend attaches user and action metadata to requests to enable backend audit logging.
-- Timestamps generated using new Date().toISOString().
-- Critical operations (future e-signature scenarios) prompt user confirmations and pass signature assertions to backend.
+## Accessibility (a11y) and i18n Strategy
+- ARIA attributes and roles on forms, lists, and banners.
+- Visible focus and adequate color contrast per theme.
+- Text content structured for future i18n extraction.
 
-## Scalability and Performance
-- Debounced inputs to reduce request volume.
-- Pagination and incremental rendering of results.
-- Simple in-memory caching for responsiveness.
-- Static asset optimization via CRA build pipeline.
+## Testing Strategy (unit, integration, validation, coverage goals)
+- Unit tests: apiClient headers and error handling; RecipeSearchForm validation and submission; RecipeList pagination/sorting.
+- Integration tests: rendering flows, routing navigation, and mocked API.
+- Validation tests: confirm audit metadata presence and input constraints.
+- Coverage: CI threshold target ≥ 80%.
 
-## Operational Considerations
-- CI should run lint, unit tests, integration tests (frontend), and accessibility checks.
-- Environment configurations (API base URL) expected from hosting environment (e.g., env var injection at build/deploy).
-- Feature flags (future) can be implemented using environment variables or a small configuration layer.
+## Deployment and Environments
+- Frontend runs at port 3000; API base URLs defined by:
+  - REACT_APP_API_BASE_URL
+  - REACT_APP_AUDIT_API_BASE_URL
+- Backend must enable CORS for http://localhost:3000 in development.
 
-## Component Overview (Planned)
-- Components
-  - SearchForm: inputs and validation
-  - RecommendationsList: displays results with pagination, sorting
-  - RecipeCard: summary information
-  - RecipeDetail: detailed view
-  - FiltersPanel: refine controls
-  - ErrorBanner / Toast: error and status
-- Hooks
-  - useRecommendations(params): fetch, cache, paginate, and attribute events
-  - useRecipeDetail(id): fetch detail and attribute events
-  - useDebounce(value, delay): input debouncing
-  - useAuditMetadata(): provides userId, timestamp, action
+## Observability and Metrics
+- Client-side metrics can include simple timing and error banner counts in future.
+- Leverage audit events for high-level traceability without PII exposure.
 
-## Interfaces (REST)
-Backend base: http://localhost:4000
+## Compliance Mapping to Code Structure Template
+- Requirement Traceability: See docs/Traceability_Matrix.md mapping REQ-* to files and tests.
+- Validation Protocols: Test_Strategy.md and Compliance_Validation_Plan.md define validation controls and audit checks.
+- API Documentation: Defined in this document’s DTO sections and PRD API Dependencies.
+- Release Gate Checklist: Mirrored in Compliance_Validation_Plan.md and summarized below.
 
-Implemented endpoints (per backend/openapi.yaml):
-- POST /auth/login
-  - body: { email, password }
-  - 200: { token, user { id, email, roles[], name } }
-- GET /users/me (auth)
-  - 200: { id, email, name, roles[] }
-- GET /recipes/search
-  - query: q, cuisine, dietary, maxTime, page=1, pageSize=10
-  - 200: { items: Recipe[], total, page, pageSize }
-- GET /recipes/{id}
-  - 200: Recipe
-- POST /recipes/{id}/save (auth, e-sign when enabled)
-  - body: { passwordReentry?, reason? }
-  - 200: { saved: boolean, esign?: string }
-- GET /users/me/saved (auth)
-  - 200: { items: Recipe[] }
-- POST /audit/log (auth)
-  - body: { action, entity, entityId?, beforeState?, afterState?, reason? }
-  - 201: Logged
-
-Frontend consumes the API using:
-- REACT_APP_API_BASE_URL=http://localhost:4000
-- REACT_APP_AUDIT_API_BASE_URL=http://localhost:4000
-- CORS_ORIGIN on backend must include http://localhost:3000
+## Release Gate Checklist Alignment
+- Inputs validated at all entry points (RecipeSearchForm.jsx).
+- Audit attribution metadata attached in apiClient and auditClient usage.
+- Error handling via ErrorBanner and normalized errors.
+- Accessibility checks integrated in tests.
+- Unit coverage ≥ 80%; integration tests passing.
+- Documentation: PRD, Architecture, Test Strategy, Compliance & Validation Plan, Traceability Matrix present.
 
 ## Actionable Next Steps
-- Implement routing and component scaffolds.
-- Build hooks for API calls with validation and audit attribution headers or metadata.
-- Implement CSS theme tokens per Ocean Professional.
-- Add tests and CI configuration for coverage and accessibility checking.
+- Expand DTO schema validation in services if backend schemas are finalized.
+- Add debounce utility hook and memoized selectors for lists.
+- Add basic telemetry hook (event timings) respecting privacy constraints.

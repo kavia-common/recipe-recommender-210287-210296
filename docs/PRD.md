@@ -1,122 +1,140 @@
-# Product Requirements Document (PRD) — Recipe Recommender Frontend (React)
+# Recipe Recommender Web App - Product Requirements Document (PRD)
 
 ## Executive Summary
-The Recipe Recommender frontend provides a modern, responsive React web interface enabling users to discover food recipes based on inputs such as ingredients, dietary preferences, allergens, cuisines, and meal types. It integrates with a backend via REST APIs and adheres to GxP and ALCOA+ principles, including audit trail considerations for critical user interactions, validation controls, and access management. This document defines user personas, scope, functional and non-functional requirements, compliance needs, KPIs, release criteria, and risk management, with a focus on the “Ocean Professional” theme and the provided style guide.
+The Recipe Recommender is a React single-page application that enables users to search and discover recipes using ingredients, preferences, allergens, cuisines, and other criteria. The frontend integrates with a backend over REST APIs and follows GxP and ALCOA+ data integrity principles. The scope includes a responsive Ocean Professional–themed UI, client-side validation, audit attribution metadata in outbound requests, and a testing strategy targeting at least 80% unit test coverage with integration and validation tests. This PRD aligns with the architecture, traceability, validation protocol expectations, and release gate checklist for compliance-readiness.
 
 ## Goals and Non-Goals
 ### Goals
-- Deliver a responsive, accessible React web interface to input preferences and display recommended recipes.
-- Support search, filter, sort, and pagination for recommendation results.
-- Provide detail views for recipes (ingredients, steps, nutrition).
-- Implement basic session handling with role-aware UI elements (e.g., admin/QA features later).
-- Integrate with backend REST APIs for recommendation queries and recipe details.
-- Apply Ocean Professional visual theme with modern UI patterns.
-- Include client-side validation and user-friendly error handling.
-- Enable front-end event attribution (user, timestamp) for audit trail needs passed to backend.
-- Provide test coverage and validation readiness in accordance with GxP requirements.
+- Deliver a responsive, accessible UI for entering search criteria and viewing recommended recipes.
+- Provide list and detail views with pagination and sorting for usability and performance.
+- Implement client-side validation, empty states, and consistent error handling.
+- Ensure frontend sends attribution metadata (userId, action, timestamp) to support backend audit trail.
+- Provide test coverage and validation readiness (>= 80% unit coverage; integration and validation tests).
+- Adhere to Ocean Professional styling and layout with sidebar navigation and a top bar.
 
 ### Non-Goals
-- Backend implementation for recommendation logic or database management.
-- Persistent user authentication implementation within the frontend (assume integration point/hooks).
-- Offline-first or PWA features beyond core caching defined in architecture.
-- Direct data storage of protected or sensitive personal data in the frontend.
+- Implementing backend recommendation logic, persistence, or audit storage.
+- Implementing e-signature flows in the current scope (reserved for future critical operations).
+- Storing sensitive personal data in the frontend or local storage.
 
-## Personas and User Stories
+## Personas and User Journeys
 ### Personas
-- Casual Home Cook (CHC): Wants quick ideas based on available ingredients and dietary limitations.
-- Health-Conscious Planner (HCP): Seeks nutritious recipes with filters for calories, macros, and allergens.
-- Culinary Explorer (CE): Interested in exploring new cuisines and complex recipes.
-- QA/Compliance Reviewer (QCR): Verifies that the UI enforces validation, logs events appropriately (via backend), and supports traceability.
+- Casual Home Cook: Finds recipes based on available ingredients and preferred cuisines.
+- Health-Conscious Planner: Filters by dietary preferences and allergens.
+- Culinary Explorer: Explores diverse cuisines with sort/pagination.
+- QA/Compliance Reviewer: Verifies validation, error handling, and audit attribution is present.
 
-### User Stories (Representative)
-- As a CHC, I want to enter ingredients I have to get matching recipes so that I can cook with what is available.
-- As an HCP, I want to filter recipes by dietary preferences and allergens to avoid unsuitable recipes.
-- As a CE, I want to browse recipes with sorting and pagination to explore efficiently.
-- As a user, I want to view a recipe’s details (ingredients, instructions, nutrition) to follow steps accurately.
-- As a QCR, I want the frontend to attribute user actions and timestamps so the backend can record an audit trail.
+### User Journeys
+- Search: Enter ingredients and optional filters, submit, see results with pagination and sorting, then open detail for instructions and nutrition.
+- Refine: Adjust filters and sorting to update results without full reloads.
+- Review detail: Open a recipe detail page and review steps, ingredients, and nutrition.
+
+## Key Features and Requirements
+- Search form capturing ingredients, dietary preference (whitelist), cuisine (whitelist), and optional max time.
+- Recommendation results list with pagination and sorting by relevance, prep time, and title.
+- Recipe detail page with ingredients, steps, and nutrition sections.
+- Ocean Professional theme with responsive layout and accessible controls.
+- Attribution metadata (userId, action, timestamp) attached to outbound API requests to support audit trail logging by the backend.
 
 ## Functional Requirements
-- Search & Input
-  - Capture user inputs: free-text ingredients, dietary preferences (checkboxes/toggles), allergens (multi-select), cuisine, meal type.
-  - Validate inputs: prevent invalid characters, enforce known options on selects, and handle empty states.
-- Recommendations List
-  - Call REST endpoint (GET/POST depending on backend contract) with validated parameters.
-  - Display list with essential metadata (title, thumbnail, rating if available, prep time).
-  - Provide pagination and sorting (e.g., relevance, prep time).
-  - Provide client-side caching of recent queries to optimize responsiveness.
+- Inputs and Validation
+  - Ingredients required, max length 500.
+  - Dietary and cuisine must be in supported option lists.
+  - Max time numeric > 0 and ≤ 600 minutes.
+- Recommendations Workflow
+  - Submit validated payload to /recommendations with pagination and sorting.
+  - Cache recent results client-side for responsiveness.
 - Recipe Detail
-  - Retrieve recipe details via REST API by recipe ID.
-  - Display sections: ingredients, steps, nutrition, and tags.
-- Filtering and Tagging
-  - Allow refinement filters on the recommendations list page without a full page refresh.
-- Theming and Layout
-  - Apply “Ocean Professional” theme: blue (#2563EB primary), amber (#F59E0B secondary), subtle shadows, rounded corners, minimalist design, gradient backgrounds where appropriate.
-  - Responsive layout: sidebar navigation, main content area for lists and detail, top bar for quick actions.
-- Accessibility & i18n
-  - WCAG 2.1 AA considerations for color contrast, focus states, semantics, and ARIA for dynamic components.
-  - Prepare text for easy extraction/localization (future).
-- Audit & Attribution (Frontend Context)
-  - For critical user operations (e.g., submitting recommendation queries, favoriting if implemented later), attach user attribution metadata (e.g., user ID from auth context if available), timestamps (ISO 8601), and action types in API payloads or headers for backend audit trail.
-- Error Handling
-  - Present friendly error messages for API failures and validation issues.
-  - Retry option for transient errors; graceful empty states.
+  - Fetch details via GET /recipes/:id and display structured sections.
+- Accessibility
+  - ARIA attributes and visible focus indicators for interactive elements.
 
 ## Non-Functional Requirements
-### Performance
-- Initial page load within acceptable thresholds for SPA (target < 2.5s on typical broadband).
-- API calls debounced where appropriate (e.g., search typing).
-- Client-side caching of recent results and pagination state.
+- Performance: Debounce inputs where applicable, paginate results, and keep DOM minimal for lists.
+- Security: Use HTTPS; use least-privilege headers; avoid localStorage token storage in production (use secure session/cookies).
+- Availability: Target 99.5% for frontend hosting (informational).
+- Usability: Clean layout, predictable navigation, and friendly error messaging.
+- Accessibility: WCAG 2.1 AA intent; verify via automated checks.
 
-### Security
-- Use HTTPS and secure headers as provided by hosting environment.
-- Do not store sensitive personal data in local storage; only short-lived non-sensitive UI state.
-- Respect least privilege on API usage (only required scopes/headers).
-- Role awareness for conditional UI, deferring to backend authorization.
+## GxP Compliance Requirements (ALCOA+, Audit Trail, e-Sign)
+- Attributable: Include userId when available, action, and timestamp in outbound requests.
+- Legible: Maintain clear component and service structure with JSDoc and documentation.
+- Contemporaneous: Generate timestamps at request time.
+- Original/Accurate/Complete/Consistent: Do not mutate API data; include parameters and metadata used for calls; use shared validators.
+- Enduring/Available: Durable audit logs and access control are handled by backend; frontend avoids durable sensitive storage.
+- e-Sign: Not in scope now; future critical operations must prompt user confirmation and attach signature assertions to the backend call.
 
-### Usability
-- Clear, consistent UI patterns and spacing.
-- Visible focus indicators and keyboard navigability.
+## Access Control and Security
+- Role-aware UI using AuthContext; backend enforces authorization.
+- No secrets in code; base URLs via environment variables.
+- Avoid localStorage for tokens; development/demo contexts may use sessionStorage with clear warning.
 
-### Accessibility
-- WCAG 2.1 AA compliance intent.
-- ARIA attributes for interactive controls and landmarks.
+## Data Model Assumptions (frontend perspective)
+- Recommendation list item fields: id, title, prepTime, and optional thumbnail/ratings if backend provides.
+- Recipe detail fields: id, title, ingredients[], steps[], nutrition{}.
+- Query DTO: { ingredients: string, preferences: string[], cuisine?: string|null, maxTime?: number|null, page: number, size: number, sort: 'relevance'|'prepTime'|'title', metadata: { userId, action, timestamp } }.
 
-## Compliance Requirements (GxP, Audit Trail, E‑Signature)
-- ALCOA+ adherence: capture user attribution and timestamps in requests to support backend audit logging.
-- Audit trail triggers: recommendation search submissions, filter changes, and recipe detail fetches (as read events), with ISO 8601 timestamps.
-- Electronic signatures: not required for browsing; reserved for critical operations (e.g., if later we add “approve a menu plan”), front-end must be able to capture user confirmation and provide binding metadata to backend when applicable.
-- Validation controls: input validation on all forms; enforce option sets; handle nulls/empties and type validation.
+## API Dependencies (to-be backend endpoints) with Examples
+- POST /recommendations
+  - Request example:
+    ```json
+    {
+      "ingredients": "chicken, garlic",
+      "preferences": ["vegan"],
+      "cuisine": "indian",
+      "maxTime": 45,
+      "page": 0,
+      "size": 10,
+      "sort": "relevance",
+      "metadata": { "userId": "u1", "action": "READ", "timestamp": "2025-01-01T12:00:00.000Z" }
+    }
+    ```
+  - Response example:
+    ```json
+    { "items": [{ "id": "r1", "title": "Tikka", "prepTime": 30 }], "page": 0, "size": 10, "total": 1 }
+    ```
+- GET /recipes/{id}
+  - Response example:
+    ```json
+    {
+      "id": "r1",
+      "title": "Tikka",
+      "ingredients": ["chicken", "garlic"],
+      "steps": ["marinate", "grill"],
+      "nutrition": { "calories": 400 }
+    }
+    ```
 
-## Success Metrics and KPIs
-- Task success rate: % of users who successfully obtain at least one recommendation within three interactions.
-- Time to first result: median under 3 seconds from submit to render (network dependent).
-- Error rate: < 1% user-visible error banners per 100 requests (excluding network outages).
-- Accessibility checks: axe automated checks pass in CI with no critical violations.
-- Test coverage: >= 80% unit coverage for frontend logic.
-- Availability (frontend hosting): target 99.5% monthly (informational).
+## Validation and Error Handling Requirements
+- Validate all inputs (ingredients required, max lengths/ranges, whitelist selects).
+- Normalize errors for user-friendly messages with optional retry.
+- Use ISO 8601 timestamps for metadata; ensure values are non-empty and correctly typed.
 
-## Release Criteria
-- Functional requirements implemented for search, list, and detail views.
-- Theming compliant with Ocean Professional.
-- Input validation implemented; error messages in place.
-- Accessibility checks pass for core flows.
-- Unit test coverage >= 80%; key integration tests passing.
-- Audit attribution metadata present in API calls where applicable.
-- Documentation: Architecture, Compliance & Validation Plan, Test Strategy, and Traceability Matrix complete.
+## Analytics and Telemetry
+- Basic telemetry via audit events: search_submit, recipe_view. Non-blocking and tolerant to failure.
+- Aggregate anonymous performance metrics can be added in future iterations.
 
-## Risks and Mitigations
-- Risk: Backend instability increases user-visible errors.
-  - Mitigation: Retries, clear error messages, and fallback empty states.
-- Risk: Inconsistent API contracts.
-  - Mitigation: Contract definition and versioning; defensive parsing with graceful degradation.
-- Risk: Performance bottlenecks on large result sets.
-  - Mitigation: Pagination, incremental rendering, caching, and debouncing.
-- Risk: Accessibility regressions.
-  - Mitigation: Automated accessibility checks in CI and manual spot checks.
+## Release Criteria and KPIs
+- Feature completeness for search, list, detail, and theme.
+- Accessibility smoke tests pass; no critical axe violations.
+- Unit test coverage >= 80%; key integration tests pass.
+- API calls include audit attribution metadata where applicable.
+- KPIs: time to first result median under 3 seconds; low error banner rate.
 
-## Actionable Next Steps
-- Confirm backend API contract (endpoints, schemas for recommendations and details).
-- Implement UI routes and components for Search, Results, and Detail screens.
-- Add client-side validation and error handling patterns.
-- Introduce event attribution middleware to append timestamps and user context to API calls.
-- Finalize test suites and CI configuration.
+## Risks, Assumptions, and Constraints
+- Risks: Backend instability, contract drift, performance on large datasets, and a11y regressions.
+- Assumptions: Backend provides stable endpoints and CORS config; environment variables configured at deploy time.
+- Constraints: No local durable storage of sensitive data; minimal dependencies.
+
+## Out-of-Scope
+- Persistent user profile management and favorites synchronization in current scope.
+- Offline/PWA capabilities.
+- Backend data persistence and e-sign implementation.
+
+## Requirement Traceability Note
+A separate Traceability Matrix maps requirement IDs to implementation and tests. For example:
+- REQ-FUNC-001 Search recipes → RecipeSearchForm.jsx, RecipeList.jsx → RecipeSearchForm.test.jsx, RecipeList.test.jsx
+- REQ-FUNC-002 Recipe detail → RecipeDetail.jsx → apiClient.test.js (headers), integration tests (future)
+
+## Test Coverage Targets
+Unit test coverage must meet or exceed 80% across frontend logic and critical paths, with integration tests validating routing and API interactions. Validation tests confirm GxP-critical aspects such as audit metadata, input constraints, and error handling.
